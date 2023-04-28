@@ -1,0 +1,84 @@
+match(n) return n limit 25
+
+
+
+Match(u)-[r]-(n)
+with n, count(r) as degree
+order by degree desc
+limit 10
+Return n, degree
+
+
+
+Match(m:Male)-[r:FOLLOWER] - (f: Female)
+with f, sum(r.strength) as totalStrength
+order by totalStrength desc 
+limit 10
+return f, totalStrength
+
+
+
+Match(m:Male)-[r:FOLLOWER] -> (f: Female)
+with f, count(r) as totalStrength
+order by totalStrength desc 
+limit 10
+return f, totalStrength
+
+
+
+call gds.graph.project(
+    'myGraph-lovina',
+    ['Male','Female','Other'],
+    {
+        FRIEND:{
+            orientation: 'UNDIRECTED',
+            properties:{
+                strength:{
+                    property:'strength',
+                    defaultValue:1.0
+                }
+            }
+        },
+        FOLLOWER:{
+            orientation: 'UNDIRECTED',
+            properties:{
+                strength:{
+                    property:'strength',
+                    defaultValue:1.0
+                }
+            }
+        }
+    }
+)
+
+
+
+match(n) detach delete n
+
+
+
+call gds.graph.project(
+    'myGraph-1',
+    ['Male','Female','Other'],
+    {
+        FRIEND:{
+            orientation: 'UNDIRECTED'
+        }
+    },
+    {
+        relationshipProperties:'strength'
+    }
+)
+
+
+
+CALL gds.louvain.write.estimate('myGraph-1',{writeProperty: 'community' })
+YIELD nodeCount, relationshipCount, bytesMin, bytesMax, requiredMemory
+
+
+
+
+CALL gds.louvain.stream('myGraph-1') 
+YIELD nodeId, communityId,intermediateCommunityIds
+RETURN gds.util.asNode(nodeId).name AS name, communityId
+ORDER BY name ASC
